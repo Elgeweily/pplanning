@@ -264,8 +264,9 @@ int main() {
 						  if ((check_car_s > car_s) && (check_car_s - car_s < 20)) {
 							  too_close = true;
 							  if (lane > 0) {
-								  // go to the left lane
+								  // go one lane to the left if not already in the leftmost lane 
 								  lane -= 1;
+								  // check if there are cars in the lane we are heading to
 								  for (int j = 0; j < sensor_fusion.size(); j++) {
 									  float d2 = sensor_fusion[j][6];
 									  if (d < (2 + 4 * lane + 2) && d >(2 + 4 * lane - 2)) {
@@ -275,7 +276,7 @@ int main() {
 										  double check_car2_s = sensor_fusion[j][5];
 										  // predict the (detected) car s value when the ego car will be at the end of the previous path
 										  check_car2_s += (double)prev_size * 0.02 * check_speed2;
-										  // check if there are nearby cars in the lane we are heading to
+										  // check if the cars in the lane we are heading to are too near
 										  if (abs(check_car2_s - car_s) < 20) {
 											  // if so don't change lane
 											  lane += 1;
@@ -337,6 +338,7 @@ int main() {
 
 			}
 
+			// generate anchor points
 			vector<double> next_wp_0 = getXY(car_s + 30, (2 + 4 * lane), map_waypoints_s, map_waypoints_x, map_waypoints_y);
 			vector<double> next_wp_1 = getXY(car_s + 60, (2 + 4 * lane), map_waypoints_s, map_waypoints_x, map_waypoints_y);
 			vector<double> next_wp_2 = getXY(car_s + 90, (2 + 4 * lane), map_waypoints_s, map_waypoints_x, map_waypoints_y);
@@ -376,7 +378,7 @@ int main() {
 				next_y_vals.push_back(previous_path_y[i]);
 			}
 
-			double target_x = 30;
+			double target_x = 20;
 			double target_y = s(target_x);
 			double target_dist = sqrt(target_x * target_x + target_y * target_y);
 
@@ -391,10 +393,10 @@ int main() {
 
 				x_add_on = x_point;
 
+				// revert back to global coordinates
 				double x_ref = x_point;
 				double y_ref = y_point;
 
-				// revert back to global coordinates
 				x_point = x_ref * cos(ref_yaw) - y_ref * sin(ref_yaw);
 				y_point = x_ref * sin(ref_yaw) + y_ref * cos(ref_yaw);
 
