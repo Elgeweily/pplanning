@@ -269,7 +269,7 @@ int main() {
 								  // check if there are cars in the lane we are heading to
 								  for (int j = 0; j < sensor_fusion.size(); j++) {
 									  float d2 = sensor_fusion[j][6];
-									  if (d < (2 + 4 * lane + 2) && d >(2 + 4 * lane - 2)) {
+									  if (d2 < (2 + 4 * lane + 2) && d2 >(2 + 4 * lane - 2)) {
 										  double vx2 = sensor_fusion[j][3];
 										  double vy2 = sensor_fusion[j][4];
 										  double check_speed2 = sqrt(vx2 * vx2 + vy2 * vy2);
@@ -277,7 +277,7 @@ int main() {
 										  // predict the (detected) car s value when the ego car will be at the end of the previous path
 										  check_car2_s += (double)prev_size * 0.02 * check_speed2;
 										  // check if the cars in the lane we are heading to are too near
-										  if (abs(check_car2_s - car_s) < 20) {
+										  if (abs(check_car2_s - car_s) < 10) {
 											  // if so don't change lane
 											  lane += 1;
 											  break;
@@ -339,9 +339,9 @@ int main() {
 			}
 
 			// generate anchor points
-			vector<double> next_wp_0 = getXY(car_s + 30, (2 + 4 * lane), map_waypoints_s, map_waypoints_x, map_waypoints_y);
-			vector<double> next_wp_1 = getXY(car_s + 60, (2 + 4 * lane), map_waypoints_s, map_waypoints_x, map_waypoints_y);
-			vector<double> next_wp_2 = getXY(car_s + 90, (2 + 4 * lane), map_waypoints_s, map_waypoints_x, map_waypoints_y);
+			vector<double> next_wp_0 = getXY(car_s + 25, (2 + 4 * lane), map_waypoints_s, map_waypoints_x, map_waypoints_y);
+			vector<double> next_wp_1 = getXY(car_s + 50, (2 + 4 * lane), map_waypoints_s, map_waypoints_x, map_waypoints_y);
+			vector<double> next_wp_2 = getXY(car_s + 75, (2 + 4 * lane), map_waypoints_s, map_waypoints_x, map_waypoints_y);
 
 			ptsx.push_back(next_wp_0[0]);
 			ptsx.push_back(next_wp_1[0]);
