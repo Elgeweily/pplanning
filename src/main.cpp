@@ -13,6 +13,13 @@
 int lane = 1;
 double ref_vel = 0; //mph
 
+// counter to attempt right lane change if left lane change is not possible after waiting for some time 
+int right_lane_attempt_counter = 0;
+// counter to prevent immediate subsequent lane changes
+int lane_change_counter = 0;
+// holder variable
+int holder = 0;
+
 using namespace std;
 
 // for convenience
@@ -263,41 +270,96 @@ int main() {
 						  // compare s values to see if we are going to be too close to the (detected) car in front
 						  if ((check_car_s > car_s) && (check_car_s - car_s < 20)) {
 							  too_close = true;
-							  if (lane > 0) {
-								  // go one lane to the left if not already in the leftmost lane 
-								  lane -= 1;
-								  // check if there are cars in the lane we are heading to
-								  for (int j = 0; j < sensor_fusion.size(); j++) {
-									  float d2 = sensor_fusion[j][6];
-									  if (d2 < (2 + 4 * lane + 2) && d2 >(2 + 4 * lane - 2)) {
-										  double vx2 = sensor_fusion[j][3];
-										  double vy2 = sensor_fusion[j][4];
-										  double check_speed2 = sqrt(vx2 * vx2 + vy2 * vy2);
-										  double check_car2_s = sensor_fusion[j][5];
-										  // predict the (detected) car s value when the ego car will be at the end of the previous path
-										  check_car2_s += (double)prev_size * 0.02 * check_speed2;
-										  // check if the cars in the lane we are heading to are too near
-										  if (abs(check_car2_s - car_s) < 10) {
-											  // if so don't change lane
-											  lane += 1;
-											  break;
+							  if (lane_change_counter > 0) {
+								  lane_change_counter -= 1;
+							  }
+							  // wait for a sufficient period after a previous lane change
+							  else if (lane_change_counter == 0) {
+								  // attempt a left lane change if not already in the leftmost lane
+								  if (lane > 0) {
+									  lane -= 1;
+									  // set lane_change_counter to a specific duration
+									  lane_change_counter = 10;
+									  // store right_lane_attempt_counter value
+									  holder = right_lane_attempt_counter;
+									  // reset right_lane_attempt_counter counter
+									  right_lane_attempt_counter = 0;
+
+									  // check if there are cars in the lane we are heading to
+									  for (int j = 0; j < sensor_fusion.size(); j++) {
+										  float d2 = sensor_fusion[j][6];
+										  if (d2 < (2 + 4 * lane + 2) && d2 >(2 + 4 * lane - 2)) {
+											  double vx2 = sensor_fusion[j][3];
+											  double vy2 = sensor_fusion[j][4];
+											  double check_speed2 = sqrt(vx2 * vx2 + vy2 * vy2);
+											  double check_car2_s = sensor_fusion[j][5];
+											  // predict the (detected) car s value when the ego car will be at the end of the previous path
+											  check_car2_s += (double)prev_size * 0.02 * check_speed2;
+											  // check if the cars in the lane we are heading to are too near
+											  if (abs(check_car2_s - car_s) < 10) {
+												  // if so don't change lane
+												  lane += 1;
+												  // reset lane_change_counter
+												  lane_change_counter = 0;
+												  // set right_lane_attempt_counter to previous value
+												  right_lane_attempt_counter = holder;
+												  // increment right_lane_attempt_counter (wait for some time, and then attempt a right lane change)
+												  right_lane_attempt_counter += 1;
+												  break;
+											  }
 										  }
 									  }
+								  }
+
+								  else {
+									  // increment right_lane_attempt_counter (wait for some time, and then attempt a right lane change)
+									  right_lane_attempt_counter += 1;
 								  }
 							  }
 						  }
 					  }
 				  }
 
-			if (too_close)
-			{
-				ref_vel -= 0.224;
-			}
+				  if (too_close) {
+					  ref_vel -= 0.224;
+				  }
 
-			else if (ref_vel < 49.5)
-			{
-				ref_vel += 0.224;
-			}
+				  else if (ref_vel < 49.5) {
+					  ref_vel += 0.224;
+				  }
+
+				  // wait for some time, and then attempt a right lane change if not in the rightmost lane
+				  if (lane < 2) {
+					  if (right_lane_attempt_counter >= 10) {
+						  lane += 1;
+						  // set lane_change_counter to a specific duration
+						  lane_change_counter = 10;
+						  // reset right_lane_attempt_counter counter
+						  right_lane_attempt_counter = 0;
+						  // check if there are cars in the lane we are heading to
+						  for (int i = 0; i < sensor_fusion.size(); i++) {
+							  float d = sensor_fusion[i][6];
+							  if (d < (2 + 4 * lane + 2) && d >(2 + 4 * lane - 2)) {
+								  double vx = sensor_fusion[i][3];
+								  double vy = sensor_fusion[i][4];
+								  double check_speed = sqrt(vx * vx + vy * vy);
+								  double check_car_s = sensor_fusion[i][5];
+								  // predict the (detected) car s value when the ego car will be at the end of the previous path
+								  check_car_s += (double)prev_size * 0.02 * check_speed;
+								  // check if the cars in the lane we are heading to are too near
+								  if (abs(check_car_s - car_s) < 10) {
+									  // if so don't change lane
+									  lane -= 1;
+									  // reset lane_change_counter
+									  lane_change_counter = 0;
+									  // set right_lane_attempt_counter counter
+									  right_lane_attempt_counter = 10;
+									  break;
+								  }
+							  }
+						  }
+					  }
+				  }
 
 			// lists of widely spaced anchor points to be used to fit splines
 			vector<double> ptsx;
@@ -309,8 +371,7 @@ int main() {
 			double ref_yaw = deg2rad(car_yaw);
 
 			// if path is almost empty, use the car's current position as the reference point, and make the path tangent to the car
-			if (prev_size < 2)
-			{
+			if (prev_size < 2) {
 				double prev_car_x = car_x - cos(car_yaw);
 				double prev_car_y = car_y - sin(car_yaw);
 
@@ -321,8 +382,7 @@ int main() {
 				ptsy.push_back(car_y);
 			}
 			// otherwise use the end of the previous path as the reference point
-			else 
-			{
+			else  {
 				ref_x = previous_path_x[prev_size - 1];
 				ref_y = previous_path_y[prev_size - 1];
 
@@ -339,9 +399,9 @@ int main() {
 			}
 
 			// generate anchor points
-			vector<double> next_wp_0 = getXY(car_s + 25, (2 + 4 * lane), map_waypoints_s, map_waypoints_x, map_waypoints_y);
-			vector<double> next_wp_1 = getXY(car_s + 50, (2 + 4 * lane), map_waypoints_s, map_waypoints_x, map_waypoints_y);
-			vector<double> next_wp_2 = getXY(car_s + 75, (2 + 4 * lane), map_waypoints_s, map_waypoints_x, map_waypoints_y);
+			vector<double> next_wp_0 = getXY(car_s + 30, (2 + 4 * lane), map_waypoints_s, map_waypoints_x, map_waypoints_y);
+			vector<double> next_wp_1 = getXY(car_s + 60, (2 + 4 * lane), map_waypoints_s, map_waypoints_x, map_waypoints_y);
+			vector<double> next_wp_2 = getXY(car_s + 90, (2 + 4 * lane), map_waypoints_s, map_waypoints_x, map_waypoints_y);
 
 			ptsx.push_back(next_wp_0[0]);
 			ptsx.push_back(next_wp_1[0]);
@@ -352,8 +412,7 @@ int main() {
 			ptsy.push_back(next_wp_2[1]);
 
 
-			for (int i = 0; i < ptsx.size(); i++)
-			{
+			for (int i = 0; i < ptsx.size(); i++) {
 				// transform points to car coorindates
 				double shift_x = ptsx[i] - ref_x;
 				double shift_y = ptsy[i] - ref_y;
@@ -372,8 +431,7 @@ int main() {
 			vector<double> next_y_vals;
 
 			// add the remaining points of the previous path to the new path
-			for (int i = 0; i < previous_path_x.size(); i++)
-			{
+			for (int i = 0; i < previous_path_x.size(); i++) {
 				next_x_vals.push_back(previous_path_x[i]);
 				next_y_vals.push_back(previous_path_y[i]);
 			}
@@ -385,8 +443,7 @@ int main() {
 			double x_add_on = 0;
 
 			// fill up the rest of the path with new points to make the total number of points = 50 points
-			for (int i = 1; i <= 50 - previous_path_x.size(); i++)
-			{
+			for (int i = 1; i <= 50 - previous_path_x.size(); i++) {
 				double N = (target_dist / (0.02 * ref_vel / 2.24)); // velocity converted from mph to m/sec;
 				double x_point = x_add_on + target_x / N;
 				double y_point = s(x_point);
