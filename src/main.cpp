@@ -279,7 +279,7 @@ int main() {
 								  if (lane > 0) {
 									  lane -= 1;
 									  // set lane_change_counter to a specific duration
-									  lane_change_counter = 10;
+									  lane_change_counter = 50;
 									  // store right_lane_attempt_counter value
 									  holder = right_lane_attempt_counter;
 									  // reset right_lane_attempt_counter counter
@@ -330,10 +330,10 @@ int main() {
 
 				  // wait for some time, and then attempt a right lane change if not in the rightmost lane
 				  if (lane < 2) {
-					  if (right_lane_attempt_counter >= 10) {
+					  if (right_lane_attempt_counter >= 20) {
 						  lane += 1;
 						  // set lane_change_counter to a specific duration
-						  lane_change_counter = 10;
+						  lane_change_counter = 50;
 						  // reset right_lane_attempt_counter counter
 						  right_lane_attempt_counter = 0;
 						  // check if there are cars in the lane we are heading to
@@ -353,7 +353,7 @@ int main() {
 									  // reset lane_change_counter
 									  lane_change_counter = 0;
 									  // set right_lane_attempt_counter counter
-									  right_lane_attempt_counter = 10;
+									  right_lane_attempt_counter = 20;
 									  break;
 								  }
 							  }
